@@ -1,0 +1,33 @@
+[package]
+name = "webgl-wrapper"
+version = "0.1.0"
+authors = ["Nathan Stoddard <nstoddard@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+js-sys = "0.3.8"
+wasm-bindgen = "0.2.31"
+log = "0.4.6"
+cgmath = { git = "https://github.com/nstoddard/cgmath", features = ["serde"] }
+serde = { version = "1.0.84", features = ["derive"] }
+num-traits = "0.2.6"
+
+[dependencies.web-sys]
+version = "0.3.8"
+features = [
+  "Window",
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "WebGl2RenderingContext",
+  "WebGlShader",
+  "WebGlProgram",
+  "WebGlBuffer",
+  "WebGlVertexArrayObject",
+  "WebGlUniformLocation",
+  "WebGlTexture",
+  "WebGlFramebuffer",
+  "WebGlContextAttributes",
+  "WebGlRenderbuffer",
+  "HtmlImageElement",
+]
