@@ -15,7 +15,7 @@ pub trait Primitive {
     const AS_GL: u32;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum MeshUsage {
     StaticDraw,
     DynamicDraw,
@@ -28,6 +28,27 @@ impl MeshUsage {
             MeshUsage::StaticDraw => WebGl2::STATIC_DRAW,
             MeshUsage::DynamicDraw => WebGl2::DYNAMIC_DRAW,
             MeshUsage::StreamDraw => WebGl2::STREAM_DRAW,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum DrawMode {
+    Draw2D,
+    Draw3D,
+}
+
+impl DrawMode {
+    fn bind(self, context: &GlContext) {
+        match self {
+            DrawMode::Draw2D => {
+                context.disable(GlFlag::CullFace);
+                context.disable(GlFlag::DepthTest);
+            }
+            DrawMode::Draw3D => {
+                context.enable(GlFlag::CullFace);
+                context.enable(GlFlag::DepthTest);
+            }
         }
     }
 }
@@ -68,8 +89,9 @@ impl<V: Vertex, P: Primitive> MeshBuilder<V, P> {
         context: &GlContext,
         program: &GlProgram<V, U>,
         usage: MeshUsage,
+        draw_mode: DrawMode,
     ) -> Mesh<V, U, P> {
-        let mut mesh = Mesh::new(context, program);
+        let mut mesh = Mesh::new(context, program, draw_mode);
         mesh.build_from(self, usage);
         mesh
     }
@@ -137,11 +159,13 @@ pub struct Mesh<V: Vertex, U: GlUniforms, P: Primitive> {
     program: GlProgram<V, U>,
     num_indices: i32,
     phantom: PhantomData<P>,
+    // TODO: can this be inferred from the vertex/uniforms types?
+    draw_mode: DrawMode,
 }
 
 impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
     /// Creates an empty `Mesh`. It must have data written via `build_from` before it's usable.
-    pub fn new(context: &GlContext, program: &GlProgram<V, U>) -> Self {
+    pub fn new(context: &GlContext, program: &GlProgram<V, U>, draw_mode: DrawMode) -> Self {
         let vao = context.inner.create_vertex_array().unwrap();
         context.inner.bind_vertex_array(Some(&vao));
 
@@ -158,6 +182,7 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
             program: program.clone(),
             num_indices: 0,
             phantom: PhantomData,
+            draw_mode,
         }
     }
 
@@ -225,6 +250,7 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
         self.program.bind(&self.context);
         uniforms.update(&self.context, &self.program.inner.gl_uniforms);
         surface.bind(&self.context);
+        self.draw_mode.bind(&self.context);
 
         self.context.inner.draw_elements_with_i32(
             P::AS_GL,

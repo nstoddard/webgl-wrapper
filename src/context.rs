@@ -12,6 +12,21 @@ pub struct GlContext {
     pub(crate) inner: WebGl2RenderingContext,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum GlFlag {
+    DepthTest,
+    CullFace,
+}
+
+impl GlFlag {
+    fn as_gl(self) -> u32 {
+        match self {
+            GlFlag::DepthTest => WebGl2::DEPTH_TEST,
+            GlFlag::CullFace => WebGl2::CULL_FACE,
+        } 
+    }
+}
+
 impl GlContext {
     /// Creates a `GlContext` and associated surface.
     ///
@@ -43,5 +58,13 @@ impl GlContext {
             viewport.end.x - viewport.start.x,
             viewport.end.y - viewport.start.y,
         );
+    }
+
+    pub(crate) fn enable(&self, flag: GlFlag) {
+        self.inner.enable(flag.as_gl());
+    }
+
+    pub(crate) fn disable(&self, flag: GlFlag) {
+        self.inner.disable(flag.as_gl());
     }
 }

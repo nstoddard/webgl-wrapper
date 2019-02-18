@@ -98,7 +98,6 @@ impl Vector2Uniform {
 
     // TODO: guarantee that the program is bound when this is called
     pub fn set(&self, context: &GlContext, val: &impl AsRef<[f32; 2]>) {
-        //Vector2<f32>) {
         let val = val.as_ref();
         context.inner.uniform2f(Some(&self.loc), val[0], val[1]);
     }
@@ -115,7 +114,6 @@ impl Vector3Uniform {
 
     // TODO: guarantee that the program is bound when this is called
     pub fn set(&self, context: &GlContext, val: &impl AsRef<[f32; 3]>) {
-        //val: &Vector3<f32>) {
         let val = val.as_ref();
         context.inner.uniform3f(Some(&self.loc), val[0], val[1], val[2]);
     }
@@ -132,7 +130,6 @@ impl Vector4Uniform {
 
     // TODO: guarantee that the program is bound when this is called
     pub fn set(&self, context: &GlContext, val: &impl AsRef<[f32; 4]>) {
-        //val: &Vector4<f32>) {
         let val = val.as_ref();
         context.inner.uniform4f(Some(&self.loc), val[0], val[1], val[2], val[3]);
     }
