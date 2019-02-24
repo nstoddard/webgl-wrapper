@@ -139,6 +139,13 @@ pub struct Texture2d {
     pub(crate) texture: WebGlTexture,
     pub(crate) size: Vector2<u32>,
     id: TextureId,
+    pub(crate) context: GlContext,
+}
+
+impl Drop for Texture2d {
+    fn drop(&mut self) {
+        self.context.inner.delete_texture(Some(&self.texture));
+    }
 }
 
 impl Texture2d {
@@ -172,7 +179,7 @@ impl Texture2d {
             .unwrap();
         Self::set_tex_parameters(context, min_filter, mag_filter, wrap_mode);
 
-        Self { texture, size, id: TextureId::new() }
+        Self { texture, size, id: TextureId::new(), context: context.clone() }
     }
 
     /// Creates a `Texture2d` from an `HtmlImageElement`.
@@ -201,7 +208,12 @@ impl Texture2d {
 
         Self::set_tex_parameters(context, min_filter, mag_filter, wrap_mode);
 
-        Self { texture, size: vec2(image.width(), image.height()), id: TextureId::new() }
+        Self {
+            texture,
+            size: vec2(image.width(), image.height()),
+            id: TextureId::new(),
+            context: context.clone(),
+        }
     }
 
     /// Creates a `Texture2d` from data.
@@ -239,7 +251,7 @@ impl Texture2d {
 
         Self::set_tex_parameters(context, min_filter, mag_filter, wrap_mode);
 
-        Self { texture, size, id: TextureId::new() }
+        Self { texture, size, id: TextureId::new(), context: context.clone() }
     }
 
     fn set_tex_parameters(
@@ -274,12 +286,12 @@ impl Texture2d {
         }
     }
 
-    pub(crate) fn bind(&self, context: &GlContext, texture_unit: u32) {
-        let mut cache = context.cache.borrow_mut();
+    pub(crate) fn bind(&self, texture_unit: u32) {
+        let mut cache = self.context.cache.borrow_mut();
         if cache.bound_textures[texture_unit as usize] != Some((WebGl2::TEXTURE_2D, self.id)) {
             cache.bound_textures[texture_unit as usize] = Some((WebGl2::TEXTURE_2D, self.id));
-            context.inner.active_texture(WebGl2::TEXTURE0 + texture_unit);
-            context.inner.bind_texture(WebGl2::TEXTURE_2D, Some(&self.texture));
+            self.context.inner.active_texture(WebGl2::TEXTURE0 + texture_unit);
+            self.context.inner.bind_texture(WebGl2::TEXTURE_2D, Some(&self.texture));
         }
     }
 }

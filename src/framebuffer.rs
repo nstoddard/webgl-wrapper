@@ -18,6 +18,13 @@ pub(crate) type FramebufferId = Id<FramebufferId_>;
 pub struct Renderbuffer {
     renderbuffer: WebGlRenderbuffer,
     size: Vector2<u32>,
+    context: GlContext,
+}
+
+impl Drop for Renderbuffer {
+    fn drop(&mut self) {
+        self.context.inner.delete_renderbuffer(Some(&self.renderbuffer));
+    }
 }
 
 impl Renderbuffer {
@@ -34,7 +41,7 @@ impl Renderbuffer {
             size.x as i32,
             size.y as i32,
         );
-        Renderbuffer { renderbuffer, size }
+        Renderbuffer { renderbuffer, size, context: context.clone() }
     }
 }
 
@@ -43,7 +50,10 @@ pub trait FramebufferAttachment {
     fn size(&self) -> Vector2<u32>;
 
     #[doc(hidden)]
-    fn attach_to_framebuffer(&self, context: &GlContext);
+    fn attach_to_framebuffer(&self);
+
+    #[doc(hidden)]
+    fn context(&self) -> &GlContext;
 }
 
 impl FramebufferAttachment for Texture2d {
@@ -52,14 +62,19 @@ impl FramebufferAttachment for Texture2d {
     }
 
     #[doc(hidden)]
-    fn attach_to_framebuffer(&self, context: &GlContext) {
-        context.inner.framebuffer_texture_2d(
+    fn attach_to_framebuffer(&self) {
+        self.context.inner.framebuffer_texture_2d(
             WebGl2::FRAMEBUFFER,
             WebGl2::COLOR_ATTACHMENT0,
             WebGl2::TEXTURE_2D,
             Some(&self.texture),
             0,
         );
+    }
+
+    #[doc(hidden)]
+    fn context(&self) -> &GlContext {
+        &self.context
     }
 }
 
@@ -69,13 +84,18 @@ impl FramebufferAttachment for Renderbuffer {
     }
 
     #[doc(hidden)]
-    fn attach_to_framebuffer(&self, context: &GlContext) {
-        context.inner.framebuffer_renderbuffer(
+    fn attach_to_framebuffer(&self) {
+        self.context.inner.framebuffer_renderbuffer(
             WebGl2::FRAMEBUFFER,
             WebGl2::COLOR_ATTACHMENT0,
             WebGl2::RENDERBUFFER,
             Some(&self.renderbuffer),
         );
+    }
+
+    #[doc(hidden)]
+    fn context(&self) -> &GlContext {
+        &self.context
     }
 }
 
@@ -88,6 +108,12 @@ pub struct Framebuffer<A: FramebufferAttachment> {
     pub attachment: A,
     viewport: Rect<i32>,
     id: FramebufferId,
+}
+
+impl<A: FramebufferAttachment> Drop for Framebuffer<A> {
+    fn drop(&mut self) {
+        self.attachment.context().inner.delete_framebuffer(Some(&self.framebuffer));
+    }
 }
 
 impl Framebuffer<Texture2d> {
@@ -119,7 +145,7 @@ impl<A: FramebufferAttachment> Framebuffer<A> {
     pub fn new(context: &GlContext, attachment: A) -> Self {
         let framebuffer = context.inner.create_framebuffer().unwrap();
         context.inner.bind_framebuffer(WebGl2::FRAMEBUFFER, Some(&framebuffer));
-        attachment.attach_to_framebuffer(context);
+        attachment.attach_to_framebuffer();
 
         let framebuffer_status = context.inner.check_framebuffer_status(WebGl2::FRAMEBUFFER);
         if framebuffer_status != WebGl2::FRAMEBUFFER_COMPLETE {

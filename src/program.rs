@@ -45,6 +45,17 @@ pub(crate) struct GlProgramInner<V: Vertex, U: GlUniforms> {
     pub(crate) gl_uniforms: U,
     phantom: PhantomData<V>,
     id: ProgramId,
+    context: GlContext,
+    vert_shader: WebGlShader,
+    frag_shader: WebGlShader,
+}
+
+impl<V: Vertex, U: GlUniforms> Drop for GlProgramInner<V, U> {
+    fn drop(&mut self) {
+        self.context.inner.delete_program(Some(&self.program));
+        self.context.inner.delete_shader(Some(&self.vert_shader));
+        self.context.inner.delete_shader(Some(&self.frag_shader));
+    }
 }
 
 impl<V: Vertex, U: GlUniforms> GlProgram<V, U> {
@@ -75,6 +86,9 @@ impl<V: Vertex, U: GlUniforms> GlProgram<V, U> {
                 gl_uniforms,
                 phantom: PhantomData,
                 id: ProgramId::new(),
+                context: context.clone(),
+                vert_shader,
+                frag_shader,
             }),
         }
     }
@@ -139,7 +153,7 @@ pub trait Vertex: VertexComponent {
 
     // TODO: find a way to cache this
     fn stride() -> i32 {
-        Self::ATTRIBUTES.into_iter().map(|&(_, size)| size).sum()
+        Self::ATTRIBUTES.iter().map(|&(_, size)| size).sum()
     }
 }
 

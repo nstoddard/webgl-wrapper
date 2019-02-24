@@ -11,7 +11,6 @@ Current features:
 
 Features not yet implemented:
 
-* Deletion of OpenGL objects which are no longer used
 * An easier way to implement the `Vertex` and `Uniforms` traits
 * More usage examples
 * More types of textures

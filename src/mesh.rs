@@ -168,6 +168,14 @@ pub struct Mesh<V: Vertex, U: GlUniforms, P: Primitive> {
     draw_mode: DrawMode,
 }
 
+impl<V: Vertex, U: GlUniforms, P: Primitive> Drop for Mesh<V, U, P> {
+    fn drop(&mut self) {
+        self.context.inner.delete_vertex_array(Some(&self.vao));
+        self.context.inner.delete_buffer(Some(&self.vbo));
+        self.context.inner.delete_buffer(Some(&self.ibo));
+    }
+}
+
 impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
     /// Creates an empty `Mesh`. It must have data written via `build_from` before it's usable.
     pub fn new(context: &GlContext, program: &GlProgram<V, U>, draw_mode: DrawMode) -> Self {
@@ -204,7 +212,7 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
         // and this method would be more efficient.
         let stride = V::stride();
         let mut offset = 0;
-        for (attr, size) in V::ATTRIBUTES.into_iter() {
+        for (attr, size) in V::ATTRIBUTES.iter() {
             let loc =
                 self.context.inner.get_attrib_location(&self.program.inner.program, attr) as u32;
             self.context.inner.enable_vertex_attrib_array(loc);

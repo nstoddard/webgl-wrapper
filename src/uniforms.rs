@@ -83,7 +83,7 @@ impl TextureUniform {
     // TODO: guarantee that the program is bound when this is called
     pub fn set(&self, context: &GlContext, texture: &Texture2d, texture_unit: u32) {
         context.inner.uniform1i(Some(&self.loc), texture_unit as i32);
-        texture.bind(context, texture_unit);
+        texture.bind(texture_unit);
     }
 }
 
