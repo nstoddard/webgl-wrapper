@@ -2,10 +2,17 @@ use cgmath::*;
 use log::*;
 use std::marker::PhantomData;
 use std::rc::Rc;
+use uid::*;
 use web_sys::*;
 
 use crate::context::*;
 use crate::uniforms::*;
+
+#[doc(hidden)]
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
+pub(crate) struct ProgramId_(());
+
+pub(crate) type ProgramId = Id<ProgramId_>;
 
 #[derive(Copy, Clone)]
 pub enum ShaderType {
@@ -37,6 +44,7 @@ pub(crate) struct GlProgramInner<V: Vertex, U: GlUniforms> {
     pub(crate) program: WebGlProgram,
     pub(crate) gl_uniforms: U,
     phantom: PhantomData<V>,
+    id: ProgramId,
 }
 
 impl<V: Vertex, U: GlUniforms> GlProgram<V, U> {
@@ -61,7 +69,14 @@ impl<V: Vertex, U: GlUniforms> GlProgram<V, U> {
 
         let gl_uniforms = U::new(context, &program);
 
-        GlProgram { inner: Rc::new(GlProgramInner { program, gl_uniforms, phantom: PhantomData }) }
+        GlProgram {
+            inner: Rc::new(GlProgramInner {
+                program,
+                gl_uniforms,
+                phantom: PhantomData,
+                id: ProgramId::new(),
+            }),
+        }
     }
 
     fn load_shader(context: &GlContext, shader_type: ShaderType, source: &str) -> WebGlShader {
@@ -83,7 +98,11 @@ impl<V: Vertex, U: GlUniforms> GlProgram<V, U> {
     }
 
     pub(crate) fn bind(&self, context: &GlContext) {
-        context.inner.use_program(Some(&self.inner.program));
+        let mut cache = context.cache.borrow_mut();
+        if cache.bound_program != Some(self.inner.id) {
+            cache.bound_program = Some(self.inner.id);
+            context.inner.use_program(Some(&self.inner.program));
+        }
     }
 }
 

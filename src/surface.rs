@@ -2,6 +2,7 @@ use cgmath::*;
 use web_sys::*;
 
 use crate::context::*;
+use crate::framebuffer::*;
 use crate::rect::*;
 
 /// A trait for things that can be rendered to.
@@ -67,6 +68,7 @@ pub struct ScreenSurface {
     viewport: Rect<i32>,
     size: Vector2<u32>,
     canvas: HtmlCanvasElement,
+    id: FramebufferId,
 }
 
 impl ScreenSurface {
@@ -76,7 +78,7 @@ impl ScreenSurface {
             Point2::from_vec(vec2(canvas.width() as i32, canvas.height() as i32)),
         );
         let size = vec2(canvas.width(), canvas.height());
-        ScreenSurface { viewport, size, canvas }
+        ScreenSurface { viewport, size, canvas, id: FramebufferId::new() }
     }
 
     /// Resizes the canvas.
@@ -94,13 +96,21 @@ impl ScreenSurface {
 impl Surface for ScreenSurface {
     #[doc(hidden)]
     fn bind(&self, context: &GlContext) {
-        context.inner.bind_framebuffer(WebGl2::DRAW_FRAMEBUFFER, None);
-        context.viewport(&self.viewport);
+        let mut cache = context.cache.borrow_mut();
+        if cache.bound_framebuffer != Some(self.id) {
+            cache.bound_framebuffer = Some(self.id);
+            context.inner.bind_framebuffer(WebGl2::DRAW_FRAMEBUFFER, None);
+            context.viewport(&self.viewport);
+        }
     }
 
     #[doc(hidden)]
     fn bind_read(&self, context: &GlContext) {
-        context.inner.bind_framebuffer(WebGl2::READ_FRAMEBUFFER, None);
+        let mut cache = context.cache.borrow_mut();
+        if cache.bound_read_framebuffer != Some(self.id) {
+            cache.bound_read_framebuffer = Some(self.id);
+            context.inner.bind_framebuffer(WebGl2::READ_FRAMEBUFFER, None);
+        }
     }
 
     fn size(&self) -> Vector2<u32> {

@@ -7,10 +7,10 @@ Once [gfx-rs](https://github.com/gfx-rs/gfx) works with WebGL, this library will
 Current features:
 
 * Programs, meshes, 2D textures, and basic support for framebuffers and renderbuffers
+* State caching to reduce the number of redundant OpenGL calls
 
 Features not yet implemented:
 
-* State caching, to reduce the number of redundant OpenGL calls
 * Deletion of OpenGL objects which are no longer used
 * An easier way to implement the `Vertex` and `Uniforms` traits
 * More usage examples

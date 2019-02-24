@@ -1,11 +1,18 @@
 use cgmath::*;
 use log::*;
+use uid::*;
 use web_sys::*;
 
 use crate::context::*;
 use crate::rect::*;
 use crate::surface::*;
 use crate::texture::*;
+
+#[doc(hidden)]
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
+pub(crate) struct FramebufferId_(());
+
+pub(crate) type FramebufferId = Id<FramebufferId_>;
 
 /// A renderbuffer.
 pub struct Renderbuffer {
@@ -80,6 +87,7 @@ pub struct Framebuffer<A: FramebufferAttachment> {
     // TODO: this shouldn't be public
     pub attachment: A,
     viewport: Rect<i32>,
+    id: FramebufferId,
 }
 
 impl Framebuffer<Texture2d> {
@@ -130,7 +138,7 @@ impl<A: FramebufferAttachment> Framebuffer<A> {
         let viewport =
             Rect::new(Point2::origin(), Point2::from_vec(attachment.size().cast().unwrap()));
 
-        Framebuffer { framebuffer, attachment, viewport }
+        Framebuffer { framebuffer, attachment, viewport, id: FramebufferId::new() }
     }
 
     // Note: this only works if the destination framebuffer isn't multisampled.
@@ -157,13 +165,21 @@ impl<A: FramebufferAttachment> Framebuffer<A> {
 impl<A: FramebufferAttachment> Surface for Framebuffer<A> {
     #[doc(hidden)]
     fn bind(&self, context: &GlContext) {
-        context.inner.bind_framebuffer(WebGl2::DRAW_FRAMEBUFFER, Some(&self.framebuffer));
-        context.viewport(&self.viewport);
+        let mut cache = context.cache.borrow_mut();
+        if cache.bound_framebuffer != Some(self.id) {
+            cache.bound_framebuffer = Some(self.id);
+            context.inner.bind_framebuffer(WebGl2::DRAW_FRAMEBUFFER, Some(&self.framebuffer));
+            context.viewport(&self.viewport);
+        }
     }
 
     #[doc(hidden)]
     fn bind_read(&self, context: &GlContext) {
-        context.inner.bind_framebuffer(WebGl2::READ_FRAMEBUFFER, Some(&self.framebuffer));
+        let mut cache = context.cache.borrow_mut();
+        if cache.bound_read_framebuffer != Some(self.id) {
+            cache.bound_read_framebuffer = Some(self.id);
+            context.inner.bind_framebuffer(WebGl2::READ_FRAMEBUFFER, Some(&self.framebuffer));
+        }
     }
 
     fn size(&self) -> Vector2<u32> {

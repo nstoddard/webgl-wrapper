@@ -32,7 +32,7 @@ impl MeshUsage {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum DrawMode {
     Draw2D,
     Draw3D,
@@ -40,14 +40,19 @@ pub enum DrawMode {
 
 impl DrawMode {
     fn bind(self, context: &GlContext) {
-        match self {
-            DrawMode::Draw2D => {
-                context.disable(GlFlag::CullFace);
-                context.disable(GlFlag::DepthTest);
-            }
-            DrawMode::Draw3D => {
-                context.enable(GlFlag::CullFace);
-                context.enable(GlFlag::DepthTest);
+        let mut cache = context.cache.borrow_mut();
+        if cache.draw_mode != Some(self) {
+            cache.draw_mode = Some(self);
+
+            match self {
+                DrawMode::Draw2D => {
+                    context.disable(GlFlag::CullFace);
+                    context.disable(GlFlag::DepthTest);
+                }
+                DrawMode::Draw3D => {
+                    context.enable(GlFlag::CullFace);
+                    context.enable(GlFlag::DepthTest);
+                }
             }
         }
     }

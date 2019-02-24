@@ -1,8 +1,14 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use web_sys::*;
 
+use crate::framebuffer::*;
+use crate::mesh::*;
+use crate::program::*;
 use crate::rect::*;
 use crate::surface::*;
+use crate::texture::*;
 
 pub(crate) type WebGl2 = WebGl2RenderingContext;
 
@@ -10,6 +16,27 @@ pub(crate) type WebGl2 = WebGl2RenderingContext;
 #[derive(Clone)]
 pub struct GlContext {
     pub(crate) inner: WebGl2RenderingContext,
+    pub(crate) cache: Rc<RefCell<GlContextCache>>,
+}
+
+pub(crate) struct GlContextCache {
+    pub draw_mode: Option<DrawMode>,
+    pub bound_program: Option<ProgramId>,
+    pub bound_framebuffer: Option<FramebufferId>,
+    pub bound_read_framebuffer: Option<FramebufferId>,
+    pub bound_textures: [Option<(u32, TextureId)>; 32],
+}
+
+impl GlContextCache {
+    fn new() -> Self {
+        Self {
+            draw_mode: None,
+            bound_program: None,
+            bound_framebuffer: None,
+            bound_read_framebuffer: None,
+            bound_textures: [None; 32],
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -23,7 +50,7 @@ impl GlFlag {
         match self {
             GlFlag::DepthTest => WebGl2::DEPTH_TEST,
             GlFlag::CullFace => WebGl2::CULL_FACE,
-        } 
+        }
     }
 }
 
@@ -48,7 +75,10 @@ impl GlContext {
         context.blend_func(WebGl2::ONE, WebGl2::ONE_MINUS_SRC_ALPHA);
         context.pixel_storei(WebGl2::UNPACK_ALIGNMENT, 1);
 
-        Ok((GlContext { inner: context }, ScreenSurface::new(canvas)))
+        Ok((
+            GlContext { inner: context, cache: Rc::new(RefCell::new(GlContextCache::new())) },
+            ScreenSurface::new(canvas),
+        ))
     }
 
     pub(crate) fn viewport(&self, viewport: &Rect<i32>) {
