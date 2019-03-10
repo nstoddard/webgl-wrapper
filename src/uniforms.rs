@@ -64,9 +64,9 @@ impl Matrix4Uniform {
 
     // TODO: guarantee that the program is bound when this is called
     pub fn set(&self, context: &GlContext, mat: &impl AsRef<[f32; 16]>) {
-        // Unsafe is necessary because from_raw_parts_mut is needed to construct a slice from a Mat4 (which is safe because Mat4 is repr(C))
+        // Unsafe is necessary because from_raw_parts is needed to construct a slice from a Mat4 (which is safe because Mat4 is repr(C))
         context.inner.uniform_matrix4fv_with_f32_array(Some(&self.loc), false, unsafe {
-            slice::from_raw_parts_mut(mat.as_ref() as *const f32 as *mut f32, 16)
+            slice::from_raw_parts(mat.as_ref() as *const f32, 16)
         });
     }
 }

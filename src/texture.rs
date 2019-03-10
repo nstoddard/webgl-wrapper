@@ -101,39 +101,6 @@ impl WrapMode {
         }
     }
 }
-
-/// A data type that can be used as texture data.
-pub trait TextureData {
-    fn subarray(memory_buffer: &JsValue, data_loc: u32, data_len: u32) -> Object;
-
-    const GL_TYPE: u32;
-
-    const SIZE: u32;
-}
-
-impl TextureData for u8 {
-    fn subarray(memory_buffer: &JsValue, data_loc: u32, data_len: u32) -> Object {
-        // TODO: see if there's a better way to do this
-        (*Uint8Array::new(&memory_buffer).subarray(data_loc, data_loc + data_len)).clone()
-    }
-
-    const GL_TYPE: u32 = WebGl2::UNSIGNED_BYTE;
-
-    const SIZE: u32 = 1;
-}
-
-// TODO: this doesn't currently work, because the internal format has to be changed to match
-/*impl TextureData for f32 {
-    fn subarray(memory_buffer: &JsValue, data_loc: u32, data_len: u32) -> Object {
-        // TODO: see if there's a better way to do this
-        (*Float32Array::new(&memory_buffer).subarray(data_loc, data_loc + data_len)).clone()
-    }
-
-    const GL_TYPE: u32 = WebGl2::FLOAT;
-
-    const SIZE: u32 = 4;
-}*/
-
 /// A 2D texture.
 pub struct Texture2d {
     pub(crate) texture: WebGlTexture,
@@ -165,7 +132,7 @@ impl Texture2d {
         context.inner.bind_texture(WebGl2::TEXTURE_2D, Some(&texture));
         context
             .inner
-            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
                 WebGl2::TEXTURE_2D,
                 0,
                 format.to_gl_internal_format() as i32,
@@ -201,7 +168,7 @@ impl Texture2d {
                 0,
                 format.to_gl_internal_format() as i32,
                 format.to_gl_format(),
-                u8::GL_TYPE,
+                WebGl2::UNSIGNED_BYTE,
                 image,
             )
             .unwrap();
@@ -217,10 +184,10 @@ impl Texture2d {
     }
 
     /// Creates a `Texture2d` from data.
-    pub fn from_data<T: TextureData>(
+    pub fn from_data(
         context: &GlContext,
         size: Vector2<u32>,
-        data: &[T],
+        data: &[u8],
         format: TextureFormat,
         min_filter: MinFilter,
         mag_filter: MagFilter,
@@ -229,14 +196,9 @@ impl Texture2d {
         let texture = context.inner.create_texture().unwrap();
         context.inner.bind_texture(WebGl2::TEXTURE_2D, Some(&texture));
 
-        let memory_buffer = memory().dyn_into::<Memory>().unwrap().buffer();
-
-        let data_loc = data.as_ptr() as u32 / T::SIZE;
-        let array = T::subarray(&memory_buffer, data_loc, data.len() as u32);
-
         context
             .inner
-            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
                 WebGl2::TEXTURE_2D,
                 0,
                 format.to_gl_internal_format() as i32,
@@ -244,14 +206,30 @@ impl Texture2d {
                 size.y as i32,
                 0,
                 format.to_gl_format(),
-                T::GL_TYPE,
-                Some(&array),
+                WebGl2::UNSIGNED_BYTE,
+                Some(data),
             )
             .unwrap();
 
         Self::set_tex_parameters(context, min_filter, mag_filter, wrap_mode);
 
         Self { texture, size, id: TextureId::new(), context: context.clone() }
+    }
+
+    pub fn set_contents(&self, format: TextureFormat, data: &[u8]) {
+        // TODO: remove texture unit parameter
+        self.bind(0);
+        self.context.inner.tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array/*opt_array_buffer_view*/(
+            WebGl2::TEXTURE_2D,
+            0,
+            0,
+            0,
+            self.size.x as i32,
+            self.size.y as i32,
+            format.to_gl_format(),
+            WebGl2::UNSIGNED_BYTE,
+            Some(data),
+            ).unwrap();
     }
 
     fn set_tex_parameters(
