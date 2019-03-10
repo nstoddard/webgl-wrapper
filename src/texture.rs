@@ -19,6 +19,8 @@ pub enum TextureFormat {
     Red,
     RGB,
     RGBA,
+    SRGB,
+    SRGBA,
 }
 
 impl TextureFormat {
@@ -27,6 +29,8 @@ impl TextureFormat {
             TextureFormat::Red => WebGl2::R8,
             TextureFormat::RGB => WebGl2::RGB8,
             TextureFormat::RGBA => WebGl2::RGBA8,
+            TextureFormat::SRGB => WebGl2::SRGB8,
+            TextureFormat::SRGBA => WebGl2::SRGB8_ALPHA8,
         }
     }
 
@@ -35,6 +39,15 @@ impl TextureFormat {
             TextureFormat::Red => WebGl2::RED,
             TextureFormat::RGB => WebGl2::RGB,
             TextureFormat::RGBA => WebGl2::RGBA,
+            TextureFormat::SRGB => WebGl2::RGB,
+            TextureFormat::SRGBA => WebGl2::RGBA,
+        }
+    }
+
+    fn is_srgb(self) -> bool {
+        match self {
+            TextureFormat::SRGB | TextureFormat::SRGBA => true,
+            _ => false,
         }
     }
 }
@@ -101,12 +114,14 @@ impl WrapMode {
         }
     }
 }
+
 /// A 2D texture.
 pub struct Texture2d {
     pub(crate) texture: WebGlTexture,
     pub(crate) size: Vector2<u32>,
     id: TextureId,
     pub(crate) context: GlContext,
+    is_srgb: bool,
 }
 
 impl Drop for Texture2d {
@@ -146,7 +161,13 @@ impl Texture2d {
             .unwrap();
         Self::set_tex_parameters(context, min_filter, mag_filter, wrap_mode);
 
-        Self { texture, size, id: TextureId::new(), context: context.clone() }
+        Self {
+            texture,
+            size,
+            id: TextureId::new(),
+            context: context.clone(),
+            is_srgb: format.is_srgb(),
+        }
     }
 
     /// Creates a `Texture2d` from an `HtmlImageElement`.
@@ -180,6 +201,7 @@ impl Texture2d {
             size: vec2(image.width(), image.height()),
             id: TextureId::new(),
             context: context.clone(),
+            is_srgb: format.is_srgb(),
         }
     }
 
@@ -213,13 +235,19 @@ impl Texture2d {
 
         Self::set_tex_parameters(context, min_filter, mag_filter, wrap_mode);
 
-        Self { texture, size, id: TextureId::new(), context: context.clone() }
+        Self {
+            texture,
+            size,
+            id: TextureId::new(),
+            context: context.clone(),
+            is_srgb: format.is_srgb(),
+        }
     }
 
     pub fn set_contents(&self, format: TextureFormat, data: &[u8]) {
         // TODO: remove texture unit parameter
         self.bind(0);
-        self.context.inner.tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array/*opt_array_buffer_view*/(
+        self.context.inner.tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
             WebGl2::TEXTURE_2D,
             0,
             0,
@@ -271,5 +299,10 @@ impl Texture2d {
             self.context.inner.active_texture(WebGl2::TEXTURE0 + texture_unit);
             self.context.inner.bind_texture(WebGl2::TEXTURE_2D, Some(&self.texture));
         }
+    }
+
+    /// True if the image uses an sRGB format.
+    pub fn is_srgb(&self) -> bool {
+        self.is_srgb
     }
 }
