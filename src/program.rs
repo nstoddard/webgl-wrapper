@@ -45,7 +45,7 @@ pub(crate) struct GlProgramInner<V: Vertex, U: GlUniforms> {
     pub(crate) gl_uniforms: U,
     phantom: PhantomData<V>,
     id: ProgramId,
-    context: GlContext,
+    pub(crate) context: GlContext,
     vert_shader: WebGlShader,
     frag_shader: WebGlShader,
 }
@@ -136,7 +136,7 @@ pub type Attributes = &'static [(&'static str, i32)];
 ///     uv: Vector2<f32>,
 /// }
 ///
-/// impl Vertex for ExampleVertex {
+/// impl VertexData for ExampleVertex {
 ///     const ATTRIBUTES: Attributes = &[("pos", 2), ("uv", 2)];
 /// }
 ///
@@ -147,25 +147,13 @@ pub type Attributes = &'static [(&'static str, i32)];
 ///     }
 /// }
 /// ```
-pub trait Vertex: VertexComponent {
+pub trait Vertex: VertexData + VertexComponent {}
+
+impl<T: VertexData + VertexComponent> Vertex for T {}
+
+pub trait VertexData {
     /// A list of all OpenGL attributes that each vertex contains.
     const ATTRIBUTES: Attributes;
-
-    // TODO: find a way to cache this
-    fn stride() -> i32 {
-        Self::ATTRIBUTES.iter().map(|&(_, size)| size).sum()
-    }
-}
-
-/// This trait should be implemented for instanced data.
-pub trait InstancedVertex {
-    /// This is similar to `Vertex::ATTRIBUTES`, but allows for entries to be None.
-    /// This is currently required when specifying matrix attributes; each row of the
-    /// matrix must have its own attribute with all but the first being `None`.
-    ///
-    /// Example: `const ATTRIBUTES: &'static [(Option<&'static str>, i32)] = &[(Some("matrix"), 4), (None, 4), (None, 4), (None, 4), (Some("color"), 4)];`
-    // TODO: find a better way to specify matrix attributes
-    const ATTRIBUTES: &'static [(Option<&'static str>, i32)];
 
     // TODO: find a way to cache this
     fn stride() -> i32 {

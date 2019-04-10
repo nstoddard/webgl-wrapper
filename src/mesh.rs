@@ -208,24 +208,7 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
 
         self.bind();
 
-        // TODO: if this function used buffer_sub_data, this would probably be unnecessary
-        // and this method would be more efficient.
-        let stride = V::stride();
-        let mut offset = 0;
-        for (attr, size) in V::ATTRIBUTES.iter() {
-            let loc =
-                self.context.inner.get_attrib_location(&self.program.inner.program, attr) as u32;
-            self.context.inner.enable_vertex_attrib_array(loc);
-            self.context.inner.vertex_attrib_pointer_with_i32(
-                loc,
-                *size,
-                WebGl2::FLOAT,
-                false,
-                stride * 4,
-                offset * 4,
-            );
-            offset += size;
-        }
+        setup_vertex_attribs::<V, _, _>(&self.program, false);
 
         let memory_buffer = memory().dyn_into::<Memory>().unwrap().buffer();
 
@@ -277,13 +260,17 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
         );
     }
 
-    pub fn draw_instanced<I: InstancedVertex>(
+    /// Draws the mesh using instanced rendering. Like `draw()`, but several instances
+    /// can be passed in the `instances` parameter and the mesh will be drawn once for each
+    /// instance. The instance data's fields must be in the same order as its `VertexData` impl
+    /// specifies, and it must use `#[repr(C)]`.
+    pub fn draw_instanced<I: VertexData>(
         &self,
         surface: &(impl Surface + ?Sized),
         uniforms: &impl Uniforms<GlUniforms = U>,
         instances: &[I],
     ) {
-        if self.num_indices == 0 {
+        if self.num_indices == 0 || instances.is_empty() {
             return;
         }
 
@@ -294,34 +281,7 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
         surface.bind(&self.context);
         self.draw_mode.bind(&self.context);
 
-        self.context.inner.bind_vertex_array(Some(&self.vao));
-
-        // TODO: most of this should be able to be cached between frames
-        // TODO: combine this with the above code
-        let stride = I::stride();
-        let mut offset = 0;
-        let mut prev_attr_location = None;
-        for (attr, size) in I::ATTRIBUTES.iter() {
-            let loc = if attr.is_none() {
-                *prev_attr_location.as_mut().unwrap() += 1;
-                prev_attr_location.unwrap()
-            } else {
-                self.context.inner.get_attrib_location(&self.program.inner.program, attr.unwrap())
-                    as u32
-            };
-            prev_attr_location = Some(loc);
-            self.context.inner.enable_vertex_attrib_array(loc);
-            self.context.inner.vertex_attrib_pointer_with_i32(
-                loc,
-                *size,
-                WebGl2::FLOAT,
-                false,
-                stride * 4,
-                offset * 4,
-            );
-            self.context.inner.vertex_attrib_divisor(loc, 1);
-            offset += size;
-        }
+        setup_vertex_attribs::<I, _, _>(&self.program, true);
 
         let memory_buffer = memory().dyn_into::<Memory>().unwrap().buffer();
 
@@ -344,5 +304,53 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
             0,
             instances.len() as i32,
         );
+    }
+}
+
+fn setup_vertex_attribs<D: VertexData, V: Vertex, U: GlUniforms>(
+    program: &GlProgram<V, U>,
+    instanced: bool,
+) {
+    let context = &program.inner.context;
+    let stride = D::stride();
+    let mut offset = 0;
+    for (attr, size) in D::ATTRIBUTES.iter() {
+        let loc = context.inner.get_attrib_location(&program.inner.program, attr) as u32;
+
+        // Matrices take up 4 attributes and each row has to be specified separately.
+        if *size == 16 {
+            setup_vertex_attrib(context, loc, 4, stride, offset, instanced);
+            setup_vertex_attrib(context, loc + 1, 4, stride, offset + 4, instanced);
+            setup_vertex_attrib(context, loc + 2, 4, stride, offset + 8, instanced);
+            setup_vertex_attrib(context, loc + 3, 4, stride, offset + 12, instanced);
+        } else if *size <= 4 {
+            setup_vertex_attrib(context, loc, *size, stride, offset, instanced);
+        } else {
+            panic!("Unsupported vertex data size");
+        }
+
+        offset += size;
+    }
+}
+
+fn setup_vertex_attrib(
+    context: &GlContext,
+    loc: u32,
+    size: i32,
+    stride: i32,
+    offset: i32,
+    instanced: bool,
+) {
+    context.inner.enable_vertex_attrib_array(loc);
+    context.inner.vertex_attrib_pointer_with_i32(
+        loc,
+        size,
+        WebGl2::FLOAT,
+        false,
+        stride * 4,
+        offset * 4,
+    );
+    if instanced {
+        context.inner.vertex_attrib_divisor(loc, 1);
     }
 }

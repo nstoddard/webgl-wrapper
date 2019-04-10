@@ -8,6 +8,7 @@ Current features:
 
 * Programs, meshes, 2D textures, and basic support for framebuffers and renderbuffers
 * State caching to reduce the number of redundant OpenGL calls
+* Instancing
 
 Features not yet implemented:
 

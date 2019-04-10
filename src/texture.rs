@@ -1,9 +1,6 @@
 use crate::context::*;
 use cgmath::*;
-use js_sys::WebAssembly::Memory;
-use js_sys::*;
 use uid::*;
-use wasm_bindgen::{memory, JsCast, JsValue};
 use web_sys::*;
 
 #[doc(hidden)]

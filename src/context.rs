@@ -18,7 +18,8 @@ pub struct GlContext {
     pub(crate) inner: WebGl2RenderingContext,
     pub(crate) cache: Rc<RefCell<GlContextCache>>,
     // A VAO/VBO that is currently used for all instanced rendering
-    // TODO: see if there's a more efficient way to do this
+    // TODO: this isn't suitable for all cases of instanced rendering; some apps will want to
+    // use static data for the instances rather than recreating them each frame.
     pub(crate) instanced_vao: WebGlVertexArrayObject,
     pub(crate) instanced_vbo: WebGlBuffer,
 }
