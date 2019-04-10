@@ -157,6 +157,22 @@ pub trait Vertex: VertexComponent {
     }
 }
 
+/// This trait should be implemented for instanced data.
+pub trait InstancedVertex {
+    /// This is similar to `Vertex::ATTRIBUTES`, but allows for entries to be None.
+    /// This is currently required when specifying matrix attributes; each row of the
+    /// matrix must have its own attribute with all but the first being `None`.
+    ///
+    /// Example: `const ATTRIBUTES: &'static [(Option<&'static str>, i32)] = &[(Some("matrix"), 4), (None, 4), (None, 4), (None, 4), (Some("color"), 4)];`
+    // TODO: find a better way to specify matrix attributes
+    const ATTRIBUTES: &'static [(Option<&'static str>, i32)];
+
+    // TODO: find a way to cache this
+    fn stride() -> i32 {
+        Self::ATTRIBUTES.iter().map(|&(_, size)| size).sum()
+    }
+}
+
 /// A component of a vertex.
 ///
 /// See the `Vertex` trait for an example implementation.

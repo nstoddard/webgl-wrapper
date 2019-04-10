@@ -253,7 +253,11 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
     }
 
     /// Draws the mesh.
-    pub fn draw(&self, surface: &impl Surface, uniforms: &impl Uniforms<GlUniforms = U>) {
+    pub fn draw(
+        &self,
+        surface: &(impl Surface + ?Sized),
+        uniforms: &impl Uniforms<GlUniforms = U>,
+    ) {
         if self.num_indices == 0 {
             return;
         }
@@ -270,6 +274,75 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
             self.num_indices,
             WebGl2::UNSIGNED_SHORT,
             0,
+        );
+    }
+
+    pub fn draw_instanced<I: InstancedVertex>(
+        &self,
+        surface: &(impl Surface + ?Sized),
+        uniforms: &impl Uniforms<GlUniforms = U>,
+        instances: &[I],
+    ) {
+        if self.num_indices == 0 {
+            return;
+        }
+
+        // TODO: state caching
+        self.bind();
+        self.program.bind(&self.context);
+        uniforms.update(&self.context, &self.program.inner.gl_uniforms);
+        surface.bind(&self.context);
+        self.draw_mode.bind(&self.context);
+
+        self.context.inner.bind_vertex_array(Some(&self.vao));
+
+        // TODO: most of this should be able to be cached between frames
+        // TODO: combine this with the above code
+        let stride = I::stride();
+        let mut offset = 0;
+        let mut prev_attr_location = None;
+        for (attr, size) in I::ATTRIBUTES.iter() {
+            let loc = if attr.is_none() {
+                *prev_attr_location.as_mut().unwrap() += 1;
+                prev_attr_location.unwrap()
+            } else {
+                self.context.inner.get_attrib_location(&self.program.inner.program, attr.unwrap())
+                    as u32
+            };
+            prev_attr_location = Some(loc);
+            self.context.inner.enable_vertex_attrib_array(loc);
+            self.context.inner.vertex_attrib_pointer_with_i32(
+                loc,
+                *size,
+                WebGl2::FLOAT,
+                false,
+                stride * 4,
+                offset * 4,
+            );
+            self.context.inner.vertex_attrib_divisor(loc, 1);
+            offset += size;
+        }
+
+        let memory_buffer = memory().dyn_into::<Memory>().unwrap().buffer();
+
+        let vertex_data_loc = instances.as_ptr() as u32 / 4;
+        let vertex_array = Float32Array::new(&memory_buffer).subarray(
+            vertex_data_loc,
+            vertex_data_loc + instances.len() as u32 * I::stride() as u32,
+        );
+        self.context.inner.buffer_data_with_array_buffer_view(
+            WebGl2::ARRAY_BUFFER,
+            &vertex_array,
+            // TODO: what usage should be used here?
+            MeshUsage::StreamDraw.as_gl(),
+        );
+
+        self.context.inner.draw_elements_instanced_with_i32(
+            P::AS_GL,
+            self.num_indices,
+            WebGl2::UNSIGNED_SHORT,
+            0,
+            instances.len() as i32,
         );
     }
 }

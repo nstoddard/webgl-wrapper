@@ -21,10 +21,7 @@ pub trait Surface {
     /// ```
     /// surface.clear(&context, &[ClearBuffer::Color([0.0, 0.0, 0.0, 0.0])]);
     /// ```
-    fn clear<Color>(&self, context: &GlContext, buffers: &[ClearBuffer<Color>])
-    where
-        Color: Into<[f32; 4]> + Copy,
-    {
+    fn clear(&self, context: &GlContext, buffers: &[ClearBuffer]) {
         assert!(!buffers.is_empty());
         self.bind(context);
 
@@ -32,8 +29,7 @@ pub trait Surface {
         for buffer in buffers {
             bits |= buffer.as_gl();
 
-            if let ClearBuffer::Color(color) = buffer {
-                let color: [f32; 4] = (*color).into();
+            if let Some(color) = buffer.color() {
                 context.inner.clear_color(color[0], color[1], color[2], color[3]);
             }
         }
@@ -45,20 +41,35 @@ pub trait Surface {
     fn size(&self) -> Vector2<u32>;
 }
 
+pub trait ClearColor {
+    #[doc(hidden)]
+    fn color(self) -> [f32; 4];
+}
+
+impl ClearColor for [f32; 4] {
+    fn color(self) -> [f32; 4] {
+        self
+    }
+}
+
 #[derive(Copy, Clone)]
-pub enum ClearBuffer<Color>
-where
-    Color: Into<[f32; 4]>,
-{
-    Color(Color),
+pub enum ClearBuffer {
+    Color([f32; 4]),
     Depth,
 }
 
-impl<Color: Into<[f32; 4]>> ClearBuffer<Color> {
-    fn as_gl(self) -> u32 {
+impl ClearBuffer {
+    fn as_gl(&self) -> u32 {
         match self {
             ClearBuffer::Color(_) => WebGl2::COLOR_BUFFER_BIT,
             ClearBuffer::Depth => WebGl2::DEPTH_BUFFER_BIT,
+        }
+    }
+
+    fn color(&self) -> Option<[f32; 4]> {
+        match self {
+            ClearBuffer::Color(color) => Some(*color),
+            _ => None,
         }
     }
 }
@@ -82,7 +93,7 @@ impl ScreenSurface {
     }
 
     /// Resizes the canvas.
-    pub fn set_size(&mut self, new_size: Vector2<u32>) {
+    pub fn set_size(&mut self, context: &GlContext, new_size: Vector2<u32>) {
         self.canvas.set_width(new_size.x);
         self.canvas.set_height(new_size.y);
         self.viewport = Rect::new(
@@ -90,6 +101,16 @@ impl ScreenSurface {
             Point2::from_vec(vec2(new_size.x as i32, new_size.y as i32)),
         );
         self.size = new_size;
+        // Resizing requires that we also change the viewport to match
+        let cache = context.cache.borrow();
+        if cache.bound_framebuffer == Some(self.id) {
+            context.viewport(&self.viewport);
+        }
+    }
+
+    /// Returns the canvas corresponding to this surface.
+    pub fn canvas(&self) -> &HtmlCanvasElement {
+        &self.canvas
     }
 }
 

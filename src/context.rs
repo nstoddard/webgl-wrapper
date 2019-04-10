@@ -17,6 +17,10 @@ pub(crate) type WebGl2 = WebGl2RenderingContext;
 pub struct GlContext {
     pub(crate) inner: WebGl2RenderingContext,
     pub(crate) cache: Rc<RefCell<GlContextCache>>,
+    // A VAO/VBO that is currently used for all instanced rendering
+    // TODO: see if there's a more efficient way to do this
+    pub(crate) instanced_vao: WebGlVertexArrayObject,
+    pub(crate) instanced_vbo: WebGlBuffer,
 }
 
 pub(crate) struct GlContextCache {
@@ -75,8 +79,18 @@ impl GlContext {
         context.blend_func(WebGl2::ONE, WebGl2::ONE_MINUS_SRC_ALPHA);
         context.pixel_storei(WebGl2::UNPACK_ALIGNMENT, 1);
 
+        let instanced_vao = context.create_vertex_array().unwrap();
+        context.bind_vertex_array(Some(&instanced_vao));
+        let instanced_vbo = context.create_buffer().unwrap();
+        context.bind_buffer(WebGl2::ARRAY_BUFFER, Some(&instanced_vbo));
+
         Ok((
-            GlContext { inner: context, cache: Rc::new(RefCell::new(GlContextCache::new())) },
+            GlContext {
+                inner: context,
+                cache: Rc::new(RefCell::new(GlContextCache::new())),
+                instanced_vao,
+                instanced_vbo,
+            },
             ScreenSurface::new(canvas),
         ))
     }

@@ -247,17 +247,20 @@ impl Texture2d {
     pub fn set_contents(&self, format: TextureFormat, data: &[u8]) {
         // TODO: remove texture unit parameter
         self.bind(0);
-        self.context.inner.tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
-            WebGl2::TEXTURE_2D,
-            0,
-            0,
-            0,
-            self.size.x as i32,
-            self.size.y as i32,
-            format.to_gl_format(),
-            WebGl2::UNSIGNED_BYTE,
-            Some(data),
-            ).unwrap();
+        self.context
+            .inner
+            .tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
+                WebGl2::TEXTURE_2D,
+                0,
+                0,
+                0,
+                self.size.x as i32,
+                self.size.y as i32,
+                format.to_gl_format(),
+                WebGl2::UNSIGNED_BYTE,
+                Some(data),
+            )
+            .unwrap();
     }
 
     fn set_tex_parameters(
