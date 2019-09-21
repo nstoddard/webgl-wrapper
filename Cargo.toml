@@ -5,7 +5,7 @@ authors = ["Nathan Stoddard <nstoddard@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
-js-sys = "0.3.17"
+js-sys = "0.3"
 wasm-bindgen = "0.2.40"
 log = "0.4.6"
 cgmath = { git = "https://github.com/rustgd/cgmath", features = ["serde"] }
@@ -14,7 +14,7 @@ num-traits = "0.2.6"
 uid = "0.1.4"
 
 [dependencies.web-sys]
-version = "0.3.17"
+version = "0.3"
 features = [
   "Window",
   "Document",

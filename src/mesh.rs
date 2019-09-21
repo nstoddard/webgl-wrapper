@@ -88,6 +88,14 @@ impl<V: Vertex, P: Primitive> MeshBuilder<V, P> {
         index
     }
 
+    pub fn verts(&mut self, verts: Vec<V>) -> Vec<MeshIndex> {
+        let mut res = Vec::with_capacity(verts.len());
+        for vert in verts {
+            res.push(self.vert(vert));
+        }
+        res
+    }
+
     /// Builds a `Mesh` from this `MeshBuilder`.
     pub fn build<U: GlUniforms>(
         &self,
@@ -121,6 +129,10 @@ impl<V: Vertex, P: Primitive> MeshBuilder<V, P> {
         self.next_index += num_verts;
         self.vertex_data.extend(other.vertex_data);
         self.indices.extend(other.indices.iter().map(|x| x + start_index));
+    }
+
+    pub fn next_index(&self) -> MeshIndex {
+        self.next_index
     }
 }
 
@@ -221,8 +233,8 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
             usage.as_gl(),
         );
 
-        let indices_loc = builder.indices.as_ptr() as u32 / 4;
-        let index_array = Float32Array::new(&memory_buffer)
+        let indices_loc = builder.indices.as_ptr() as u32 / 2;
+        let index_array = Uint16Array::new(&memory_buffer)
             .subarray(indices_loc, indices_loc + builder.indices.len() as u32);
         self.context.inner.buffer_data_with_array_buffer_view(
             WebGl2::ELEMENT_ARRAY_BUFFER,
@@ -317,7 +329,7 @@ fn setup_vertex_attribs<D: VertexData, V: Vertex, U: GlUniforms>(
     for (attr, size) in D::ATTRIBUTES.iter() {
         let loc = context.inner.get_attrib_location(&program.inner.program, attr) as u32;
 
-        // Matrices take up 4 attributes and each row has to be specified separately.
+        // Matrices take up 4 attributes so each row has to be specified separately.
         if *size == 16 {
             setup_vertex_attrib(context, loc, 4, stride, offset, instanced);
             setup_vertex_attrib(context, loc + 1, 4, stride, offset + 4, instanced);

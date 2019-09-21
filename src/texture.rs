@@ -12,7 +12,6 @@ pub(crate) type TextureId = Id<TextureId_>;
 // TODO: TextureFormat should support U8U8U8 etc, so they can take less space
 #[derive(Copy, Clone, Debug)]
 pub enum TextureFormat {
-    // Only the red component will be meaningful, the others are undefined.
     Red,
     RGB,
     RGBA,

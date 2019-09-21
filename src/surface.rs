@@ -38,7 +38,18 @@ pub trait Surface {
     }
 
     /// Returns the size of the surface.
+    #[inline]
     fn size(&self) -> Vector2<u32>;
+
+    #[inline]
+    fn width(&self) -> u32 {
+        self.size().x
+    }
+
+    #[inline]
+    fn height(&self) -> u32 {
+        self.size().y
+    }
 }
 
 pub trait ClearColor {
