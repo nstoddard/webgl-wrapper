@@ -245,6 +245,8 @@ impl<V: Vertex, U: GlUniforms, P: Primitive> Mesh<V, U, P> {
 
     fn bind(&self) {
         self.context.inner.bind_vertex_array(Some(&self.vao));
+        // The ELEMENT_ARRAY_BUFFER doesn't need to be bound here, but the ARRAY_BUFFER does (https://stackoverflow.com/a/21652930)
+        self.context.inner.bind_buffer(WebGl2::ARRAY_BUFFER, Some(&self.vbo));
     }
 
     /// Draws the mesh.
