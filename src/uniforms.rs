@@ -179,3 +179,18 @@ impl Array4Uniform {
         context.inner.uniform4f(Some(&self.loc), val[0], val[1], val[2], val[3]);
     }
 }
+
+pub struct F32Uniform {
+    loc: WebGlUniformLocation,
+}
+
+impl F32Uniform {
+    pub fn new(name: &str, context: &GlContext, program: &WebGlProgram) -> Self {
+        Self { loc: context.inner.get_uniform_location(program, name).unwrap() }
+    }
+
+    // TODO: guarantee that the program is bound when this is called
+    pub fn set(&self, context: &GlContext, val: f32) {
+        context.inner.uniform1f(Some(&self.loc), val);
+    }
+}

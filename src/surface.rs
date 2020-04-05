@@ -38,7 +38,6 @@ pub trait Surface {
     }
 
     /// Returns the size of the surface.
-    #[inline]
     fn size(&self) -> Vector2<u32>;
 
     #[inline]

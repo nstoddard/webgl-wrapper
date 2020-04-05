@@ -167,6 +167,20 @@ impl<V: Vertex> MeshBuilder<V, Lines> {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct Points;
+
+impl Primitive for Points {
+    const AS_GL: u32 = WebGl2::POINTS;
+}
+
+impl<V: Vertex> MeshBuilder<V, Points> {
+    /// Adds a point to the mesh.
+    pub fn point(&mut self, a: MeshIndex) {
+        self.indices.push(a);
+    }
+}
+
 /// A mesh; built using a `MeshBuilder`.
 pub struct Mesh<V: Vertex, U: GlUniforms, P: Primitive> {
     vao: WebGlVertexArrayObject,
