@@ -259,6 +259,33 @@ impl Texture2d {
             .unwrap();
     }
 
+    /// Like `set_contents`, but only updates part of the texture.
+    pub fn set_partial_contents(
+        &self,
+        format: TextureFormat,
+        xoffset: i32,
+        yoffset: i32,
+        width: i32,
+        height: i32,
+        data: &[u8],
+    ) {
+        self.bind(0);
+        self.context
+            .inner
+            .tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
+                WebGl2::TEXTURE_2D,
+                0,
+                xoffset,
+                yoffset,
+                width,
+                height,
+                format.to_gl_format(),
+                WebGl2::UNSIGNED_BYTE,
+                Some(data),
+            )
+            .unwrap();
+    }
+
     fn set_tex_parameters(
         context: &GlContext,
         min_filter: MinFilter,
